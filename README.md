@@ -515,6 +515,8 @@ $ tlsx -u example.com -ci cipher_list.txt -cipher
 # How build
 ```
 go build -o tlsx cmd/tlsx/main.go
+# test
+./tlsx -l $HOME/MyWork/goSqlite_gorm/config/blackIpv4.txt -json
 ```
 
 # Communication group (WeChat, QQ，Tg)
