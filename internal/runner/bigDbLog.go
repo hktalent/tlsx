@@ -18,10 +18,12 @@ func NewBigDbLog(out output.Writer) output.Writer {
 
 func (r *BigDbLog) Close() error {
 	util.CloseLogBigDb()
+	r.Out.Close()
 	return nil
 }
 
 func (r *BigDbLog) Write(log *clients.Response) error {
 	util.PushLog(log)
+	r.Out(log)
 	return nil
 }

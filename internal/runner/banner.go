@@ -42,7 +42,7 @@ func (r *Runner) validateOptions() error {
 		// top https port
 		// https://www.shodan.io/search/facet?query=https&facet=port
 		var aShodanHttpsTop = strings.Split(util.GetVal("TopPort"), ",")
-		
+
 		r.options.Ports = append(r.options.Ports, aShodanHttpsTop[0:10]...)
 	}
 	if r.options.CertsOnly && !(r.options.ScanMode == "ztls" || r.options.ScanMode == "auto") {
