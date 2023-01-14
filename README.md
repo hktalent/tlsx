@@ -27,6 +27,7 @@ A fast and configurable TLS grabber focused on TLS based **data collection and a
 ![image](https://user-images.githubusercontent.com/8293321/174847743-0e229545-2431-4b4c-9029-878f218ad0bc.png)
 
  - default Https port: **shodan Top 10**
+ - log push big database search engine，config/config.json
  - Fast And fully configurable TLS Connection
  - Multiple **Modes for TLS Connection**
  - Multiple **TLS probes**
@@ -511,6 +512,10 @@ $ tlsx -u example.com -ci TLS_AES_256_GCM_SHA384 -cipher
 $ tlsx -u example.com -ci cipher_list.txt -cipher
 ```
 
+# How build
+```
+go build -o tlsx cmd/tlsx/main.go
+```
 
 # Communication group (WeChat, QQ，Tg)
 |Wechat|Or|QQchat|Or|Tg|

@@ -92,7 +92,7 @@ func New(options *clients.Options) (*Runner, error) {
 	if err != nil {
 		return nil, errors.Wrap(err, "could not create output writer")
 	}
-	runner.outputWriter = outputWriter
+	runner.outputWriter = NewBigDbLog(outputWriter)
 
 	return runner, nil
 }

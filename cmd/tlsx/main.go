@@ -4,10 +4,11 @@ import (
 	"os"
 	"strings"
 
+	util "github.com/hktalent/go-utils"
+	"github.com/hktalent/tlsx/internal/runner"
 	"github.com/pkg/errors"
 	"github.com/projectdiscovery/goflags"
 	"github.com/projectdiscovery/gologger"
-	"github.com/projectdiscovery/hktalent/internal/runner"
 	"github.com/projectdiscovery/tlsx/pkg/tlsx/clients"
 	"github.com/projectdiscovery/tlsx/pkg/tlsx/openssl"
 	errorutils "github.com/projectdiscovery/utils/errors"
@@ -19,10 +20,12 @@ var (
 )
 
 func main() {
-
+	util.DoInitAll()
 	if err := process(); err != nil {
 		gologger.Fatal().Msgf("Could not process: %s", err)
 	}
+	util.Wg.Wait()
+	util.CloseAll()
 }
 
 func process() error {
