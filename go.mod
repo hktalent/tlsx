@@ -3,7 +3,7 @@ module github.com/hktalent/tlsx
 go 1.19
 
 require (
-	github.com/hktalent/go-utils v0.0.0-20230114070842-ea4c8d799be5
+	github.com/hktalent/go-utils v0.0.0-20230114083205-5fda7654ce1c
 	github.com/miekg/dns v1.1.50
 	github.com/pkg/errors v0.9.1
 	github.com/projectdiscovery/dnsx v1.1.1

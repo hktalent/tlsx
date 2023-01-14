@@ -283,6 +283,8 @@ github.com/hktalent/go-update v0.0.0-20230103083644-512a71e58edc h1:hC7hMvIpvwmM
 github.com/hktalent/go-update v0.0.0-20230103083644-512a71e58edc/go.mod h1:hmpVHJZPSxHaw7St4f7eYTSBMG8dz8pnTQ4N6mOmTfE=
 github.com/hktalent/go-utils v0.0.0-20230114070842-ea4c8d799be5 h1:1vBfr1Ww7muQJfUZFIE4ZvVVYea6Ry5uxAtXPTUf1WY=
 github.com/hktalent/go-utils v0.0.0-20230114070842-ea4c8d799be5/go.mod h1:0n5SE1M6tjJ2DbZf8tZ3/Qd+WK/yaHp11vUKMW5sdVU=
+github.com/hktalent/go-utils v0.0.0-20230114083205-5fda7654ce1c h1:ntShaOUTBbsShxNMHjMWwc9LzdyS89gU5OQu7P/or7Y=
+github.com/hktalent/go-utils v0.0.0-20230114083205-5fda7654ce1c/go.mod h1:0n5SE1M6tjJ2DbZf8tZ3/Qd+WK/yaHp11vUKMW5sdVU=
 github.com/hooklift/assert v0.1.0 h1:UZzFxx5dSb9aBtvMHTtnPuvFnBvcEhHTPb9+0+jpEjs=
 github.com/hpcloud/tail v1.0.0/go.mod h1:ab1qPbhIpdTxEkNHXyeSf5vhxWSCs/tWer42PpOxQnU=
 github.com/hydrogen18/memlistener v0.0.0-20141126152155-54553eb933fb/go.mod h1:qEIFzExnS6016fRpRfxrExeVn2gbClQA99gQhnIcdhE=
