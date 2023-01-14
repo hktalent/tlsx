@@ -6,10 +6,9 @@
 
 <p align="center">
 <a href="https://opensource.org/licenses/MIT"><img src="https://img.shields.io/badge/license-MIT-_red.svg"></a>
-<a href="https://goreportcard.com/badge/github.com/projectdiscovery/tlsx"><img src="https://goreportcard.com/badge/github.com/projectdiscovery/tlsx"></a>
-<a href="https://github.com/projectdiscovery/tlsx/releases"><img src="https://img.shields.io/github/release/projectdiscovery/tlsx"></a>
-<a href="https://twitter.com/pdiscoveryio"><img src="https://img.shields.io/twitter/follow/pdiscoveryio.svg?logo=twitter"></a>
-<a href="https://discord.gg/projectdiscovery"><img src="https://img.shields.io/discord/695645237418131507.svg?logo=discord"></a>
+<a href="https://goreportcard.com/badge/github.com/hktalent/tlsx"><img src="https://goreportcard.com/badge/github.com/hktalent/tlsx"></a>
+<a href="https://github.com/hktalent/tlsx/releases"><img src="https://img.shields.io/github/release/hktalent/tlsx"></a>
+<a href="https://twitter.com/intent/follow?screen_name=Hktalent3135773"><img src="https://img.shields.io/twitter/follow/Hktalent3135773.svg?style=social&label=Follow"></a>
 </p>
 
 <p align="center">
@@ -17,7 +16,6 @@
   <a href="#installation">Installation</a> •
   <a href="#usage">Usage</a> •
   <a href="#running-tlsx">Running tlsx</a> •
-  <a href="https://discord.gg/projectdiscovery">Join Discord</a>
 </p>
 
 
@@ -28,6 +26,7 @@ A fast and configurable TLS grabber focused on TLS based **data collection and a
 
 ![image](https://user-images.githubusercontent.com/8293321/174847743-0e229545-2431-4b4c-9029-878f218ad0bc.png)
 
+ - default Https port: **shodan Top 10**
  - Fast And fully configurable TLS Connection
  - Multiple **Modes for TLS Connection**
  - Multiple **TLS probes**
@@ -42,10 +41,10 @@ A fast and configurable TLS grabber focused on TLS based **data collection and a
 
 ## Installation
 
-tlsx requires **Go 1.18** to install successfully. To install, just run the below command or download pre-compiled binary from [release page](https://github.com/projectdiscovery/tlsx/releases).
+tlsx requires **Go 1.18** to install successfully. To install, just run the below command or download pre-compiled binary from [release page](https://github.com/hktalent/tlsx/releases).
 
 ```console
-go install github.com/projectdiscovery/tlsx/cmd/tlsx@latest
+go install github.com/hktalent/tlsx/cmd/tlsx@latest
 ```
 
 ## Usage
@@ -512,19 +511,18 @@ $ tlsx -u example.com -ci TLS_AES_256_GCM_SHA384 -cipher
 $ tlsx -u example.com -ci cipher_list.txt -cipher
 ```
 
-## Acknowledgements
 
-This program optionally uses:
-
-- [zcrypto](https://github.com/zmap/zcrypto) library from the zmap team.
-
---------
-
-<div align="center">
-
-tlsx is made with ❤️ by the [projectdiscovery](https://projectdiscovery.io) team and distributed under [MIT License](LICENSE).
+# Communication group (WeChat, QQ，Tg)
+|Wechat|Or|QQchat|Or|Tg|
+|---|---|---|--- |--- |
+| <img width=166 src=https://github.com/hktalent/scan4all/blob/main/static/wcq.JPG> || <img width=166 src=https://github.com/hktalent/scan4all/blob/main/static/qqc.jpg> || <img width=166 src=https://github.com/hktalent/sall/blob/main/static/tg.jpg> |
 
 
-<a href="https://discord.gg/projectdiscovery"><img src="https://raw.githubusercontent.com/projectdiscovery/nuclei-burp-plugin/main/static/join-discord.png" width="300" alt="Join Discord"></a>
+## 💖Star
+[![Stargazers over time](https://starchart.cc/hktalent/tlsx.svg)](https://starchart.cc/hktalent/tlsx)
 
-</div>
+# Donation
+| Wechat Pay | AliPay | Paypal | BTC Pay |BCH Pay |
+| --- | --- | --- | --- | --- |
+|<img src=https://raw.githubusercontent.com/hktalent/myhktools/main/md/wc.png>|<img width=166 src=https://raw.githubusercontent.com/hktalent/myhktools/main/md/zfb.png>|[paypal](https://www.paypal.me/pwned2019) **miracletalent@gmail.com**|<img width=166 src=https://raw.githubusercontent.com/hktalent/myhktools/main/md/BTC.png>|<img width=166 src=https://raw.githubusercontent.com/hktalent/myhktools/main/md/BCH.jpg>|
+
