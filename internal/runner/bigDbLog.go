@@ -24,6 +24,6 @@ func (r *BigDbLog) Close() error {
 
 func (r *BigDbLog) Write(log *clients.Response) error {
 	util.PushLog(log)
-	r.Out(log)
+	r.Out.Write(log)
 	return nil
 }
