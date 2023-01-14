@@ -1,0 +1,28 @@
+builds:
+    - binary: mapcidr
+      main: cmd/mapcidr/main.go
+      goos:
+        - linux
+        - windows
+        - darwin
+      goarch:
+        - amd64
+        - 386
+        - arm
+        - arm64
+  
+archives:
+    - id: tgz
+      format: tar.gz
+      replacements:
+          darwin: macOS
+      format_overrides:
+          - goos: windows
+            format: zip
+
+announce:
+  slack:
+    enabled: true
+    channel: '#release'
+    username: GoReleaser
+    message_template: '{{ .ProjectName }} {{ .Tag }} is out! Check it out at {{ .ReleaseURL }}'
