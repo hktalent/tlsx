@@ -522,7 +522,7 @@ go build -o tlsx cmd/tlsx/main.go
 # Communication group (WeChat, QQ，Tg)
 |Wechat|Or|QQchat|Or|Tg|
 |---|---|---|--- |--- |
-| <img width=166 src=https://github.com/hktalent/scan4all/blob/main/static/wcq.JPG> || <img width=166 src=https://github.com/hktalent/scan4all/blob/main/static/qqc.jpg> || <img width=166 src=https://github.com/hktalent/sall4all/blob/main/static/tg.jpg> |
+| <img width=166 src=https://github.com/hktalent/scan4all/blob/main/static/wcq.JPG> || <img width=166 src=https://github.com/hktalent/scan4all/blob/main/static/qqc.jpg> || <img width=166 src=https://github.com/hktalent/scan4all/raw/main/static/tg.jpg> |
 
 
 ## 💖Star
