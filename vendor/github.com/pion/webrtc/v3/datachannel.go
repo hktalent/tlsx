@@ -49,6 +49,8 @@ type DataChannel struct {
 	onMessageHandler    func(DataChannelMessage)
 	openHandlerOnce     sync.Once
 	onOpenHandler       func()
+	dialHandlerOnce     sync.Once
+	onDialHandler       func()
 	onCloseHandler      func()
 	onBufferedAmountLow func()
 	onErrorHandler      func(error)
@@ -175,6 +177,7 @@ func (d *DataChannel) open(sctpTransport *SCTPTransport) error {
 	dc.OnBufferedAmountLow(d.onBufferedAmountLow)
 	d.mu.Unlock()
 
+	d.onDial()
 	d.handleOpen(dc, false, d.negotiated)
 	return nil
 }
@@ -225,6 +228,30 @@ func (d *DataChannel) onOpen() {
 			handler()
 			d.checkDetachAfterOpen()
 		})
+	}
+}
+
+// OnDial sets an event handler which is invoked when the
+// peer has been dialed, but before said peer has responsed
+func (d *DataChannel) OnDial(f func()) {
+	d.mu.Lock()
+	d.dialHandlerOnce = sync.Once{}
+	d.onDialHandler = f
+	d.mu.Unlock()
+
+	if d.ReadyState() == DataChannelStateOpen {
+		// If the data channel is already open, call the handler immediately.
+		go d.dialHandlerOnce.Do(f)
+	}
+}
+
+func (d *DataChannel) onDial() {
+	d.mu.RLock()
+	handler := d.onDialHandler
+	d.mu.RUnlock()
+
+	if handler != nil {
+		go d.dialHandlerOnce.Do(handler)
 	}
 }
 
@@ -280,6 +307,9 @@ func (d *DataChannel) handleOpen(dc *datachannel.DataChannel, isRemote, isAlread
 	// * remote datachannels should fire OnOpened. This isn't spec compliant, but we can't break behavior yet
 	// * already negotiated datachannels should fire OnOpened
 	if d.api.settingEngine.detach.DataChannels || isRemote || isAlreadyNegotiated {
+		// bufferedAmountLowThreshold and onBufferedAmountLow might be set earlier
+		d.dataChannel.SetBufferedAmountLowThreshold(d.bufferedAmountLowThreshold)
+		d.dataChannel.OnBufferedAmountLow(d.onBufferedAmountLow)
 		d.onOpen()
 	} else {
 		dc.OnOpen(func() {

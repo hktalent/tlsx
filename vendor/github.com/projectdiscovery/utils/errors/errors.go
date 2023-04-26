@@ -1,4 +1,9 @@
-package errors
+package errorutil
+
+import (
+	"fmt"
+	"strings"
+)
 
 // IsAny checks if err is not nil and matches any one of errxx errors
 // if match successful returns true else false
@@ -15,14 +20,12 @@ func IsAny(err error, errxx ...error) bool {
 		}
 	} else {
 		for _, v := range errxx {
-			if v == nil {
-				continue
+			// check if v is an enriched error
+			if ee, ok := v.(Error); ok && ee.Equal(err) {
+				return true
 			}
-			if ee, ok := v.(Error); ok {
-				if ee.Equal(err) {
-					return true
-				}
-			} else if v.Error() == ee.Error() {
+			// check standard error equality
+			if strings.EqualFold(err.Error(), fmt.Sprint(v)) {
 				return true
 			}
 		}

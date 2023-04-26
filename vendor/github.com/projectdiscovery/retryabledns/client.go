@@ -14,11 +14,11 @@ import (
 	"time"
 
 	"github.com/miekg/dns"
-	"github.com/projectdiscovery/iputil"
 	"github.com/projectdiscovery/retryabledns/doh"
 	"github.com/projectdiscovery/retryabledns/hostsfile"
 	"github.com/projectdiscovery/retryablehttp-go"
-	"github.com/projectdiscovery/sliceutil"
+	iputil "github.com/projectdiscovery/utils/ip"
+	sliceutil "github.com/projectdiscovery/utils/slice"
 )
 
 var internalRangeCheckerInstance *internalRangeChecker
@@ -268,12 +268,13 @@ func (c *Client) queryMultiple(host string, requestTypes []uint16, resolver Reso
 		}
 
 		var (
-			resp   *dns.Msg
-			trResp chan *dns.Envelope
+			resp        *dns.Msg
+			trResp      chan *dns.Envelope
+			hasResolver bool = resolver != nil
 		)
 		for i := 0; i < c.options.MaxRetries; i++ {
 			index := atomic.AddUint32(&c.serversIndex, 1)
-			if resolver == nil {
+			if !hasResolver {
 				resolver = c.resolvers[index%uint32(len(c.resolvers))]
 			}
 			switch r := resolver.(type) {

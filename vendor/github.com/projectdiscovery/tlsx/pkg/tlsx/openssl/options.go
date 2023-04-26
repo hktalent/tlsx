@@ -2,9 +2,18 @@ package openssl
 
 import (
 	"crypto/x509"
+	"errors"
 	"fmt"
 	"strings"
 )
+
+// SupportedTLSVersion of OpenSSL Mode
+var SupportedTLSVersions = []string{
+	"tls10",
+	"tls11",
+	"tls12",
+	// "tls13",
+}
 
 type Protocols int
 
@@ -15,6 +24,7 @@ const (
 	TLSv1_3
 	DTLSv1
 	DTLSv1_2
+	TLSUnsupported
 )
 
 func (p *Protocols) String() string {
@@ -36,48 +46,34 @@ func (p *Protocols) String() string {
 	}
 }
 
-// supported tls version
-func supportedTLSVersions() []string {
-	return []string{
-		"tls10",
-		"tls11",
-		"tls12",
-		// "tls13",
-	}
-}
-
-func getProtocol(versionTLS string) Protocols {
-	var tlsversion Protocols
+func getProtocol(versionTLS string) (Protocols, error) {
 	switch versionTLS {
 	case "tls10":
-		tlsversion = TLSv1
+		return TLSv1, nil
 	case "tls11":
-		tlsversion = TLSv1_1
+		return TLSv1_1, nil
 	case "tls12":
-		tlsversion = TLSv1_2
+		return TLSv1_2, nil
 	// case "tls13":
 	// 	tlsversion = TLSv1_3
-	case "dtls10":
-		tlsversion = DTLSv1
-	case "dtls12":
-		tlsversion = DTLSv1_2
+	// case "dtls10":
+	// 	tlsversion = DTLSv1
+	// case "dtls12":
+	// 	tlsversion = DTLSv1_2
+	default:
+		return TLSUnsupported, errors.New("unsupported version")
 	}
-	if versionTLS == "" {
-		// if no tls version is used use tls13
-		// to avoid possible chances of handshake failures
-		return TLSv1_2
-	}
-	return tlsversion
 }
 
 // OpenSSL Command Line Options
 type Options struct {
-	Address    string    // host:port address to connect
-	Cipher     []string  // Cipher to use while connecting
-	ServerName string    //  Set TLS extension servername in ClientHello (SNI)
-	CertChain  bool      // Show Certificate Chain
-	Protocol   Protocols // protocol to use
-	CAFile     string    // CA Certificate File
+	Address       string    // host:port address to connect
+	Cipher        []string  // Cipher to use while connecting
+	ServerName    string    // Set TLS extension servername in ClientHello (SNI)
+	CertChain     bool      // Show Certificate Chain
+	Protocol      Protocols // protocol to use
+	CAFile        string    // CA Certificate File
+	SkipCertParse bool      // SkipCertParse skips parsing and validating certs
 }
 
 // generate command Args using given options

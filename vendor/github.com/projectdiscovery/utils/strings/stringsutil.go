@@ -3,6 +3,7 @@ package stringsutil
 import (
 	"fmt"
 	"strings"
+	"unicode"
 )
 
 // https://www.dotnetperls.com/between-before-after-go
@@ -130,10 +131,21 @@ func Reverse(s string) string {
 	return string(rune)
 }
 
-// ContainsAny returns true is s contains any specified substring
+// ContainsAny returns true if s contains any specified substring.
 func ContainsAny(s string, ss ...string) bool {
 	for _, sss := range ss {
 		if strings.Contains(s, sss) {
+			return true
+		}
+	}
+	return false
+}
+
+// ContainsAnyI returns true if s contains any specified substring (case-insensitive).
+func ContainsAnyI(s string, ss ...string) bool {
+	s = strings.ToLower(s)
+	for _, sss := range ss {
+		if strings.Contains(s, strings.ToLower(sss)) {
 			return true
 		}
 	}
@@ -244,4 +256,39 @@ func LongestRepeatingSequence(s string) LongestSequence {
 		resCount = strings.Count(s, res)
 	}
 	return LongestSequence{Sequence: res, Count: resCount}
+}
+
+// IsPrintable checks if the strings is made only of printable characters
+func IsPrintable(s string) bool {
+	sWithOnlyPrintable := strings.Map(func(r rune) rune {
+		if unicode.IsPrint(r) {
+			return r
+		}
+		return -1
+	}, s)
+
+	return EqualFoldAny(s, sWithOnlyPrintable)
+}
+
+// IsCTRLC checks if the string is CTRL+C
+func IsCTRLC(s string) bool {
+	return len(s) == 1 && s[0] == '\x03'
+}
+
+// Truncate a string to max length
+func Truncate(data string, maxSize int) string {
+	if maxSize >= 0 && len(data) > maxSize {
+		return data[:maxSize]
+	}
+	return data
+}
+
+// IndexAny returns the index of the first instance of any of the specified substrings in s, or -1 if s does not contain any of the substrings.
+func IndexAny(s string, seps ...string) (int, string) {
+	for _, sep := range seps {
+		if idx := strings.Index(s, sep); idx >= 0 {
+			return idx, sep
+		}
+	}
+	return -1, ""
 }

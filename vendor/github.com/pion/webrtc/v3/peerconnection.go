@@ -392,7 +392,11 @@ func (pc *PeerConnection) checkNegotiationNeeded() bool { //nolint:gocognit
 			// Step 5.3.1
 			if t.Direction() == RTPTransceiverDirectionSendrecv || t.Direction() == RTPTransceiverDirectionSendonly {
 				descMsid, okMsid := m.Attribute(sdp.AttrKeyMsid)
-				track := t.Sender().Track()
+				sender := t.Sender()
+				if sender == nil {
+					return true
+				}
+				track := sender.Track()
 				if !okMsid || descMsid != track.StreamID()+" "+track.ID() {
 					return true
 				}
@@ -744,15 +748,23 @@ func (pc *PeerConnection) updateConnectionState(iceConnectionState ICEConnection
 	case iceConnectionState == ICEConnectionStateDisconnected:
 		connectionState = PeerConnectionStateDisconnected
 
-	// All RTCIceTransports and RTCDtlsTransports are in the "connected", "completed" or "closed"
-	// state and at least one of them is in the "connected" or "completed" state.
-	case iceConnectionState == ICEConnectionStateConnected && dtlsTransportState == DTLSTransportStateConnected:
-		connectionState = PeerConnectionStateConnected
+	// None of the previous states apply and all RTCIceTransports are in the "new" or "closed" state,
+	// and all RTCDtlsTransports are in the "new" or "closed" state, or there are no transports.
+	case (iceConnectionState == ICEConnectionStateNew || iceConnectionState == ICEConnectionStateClosed) &&
+		(dtlsTransportState == DTLSTransportStateNew || dtlsTransportState == DTLSTransportStateClosed):
+		connectionState = PeerConnectionStateNew
 
-	//  Any of the RTCIceTransports or RTCDtlsTransports are in the "connecting" or
-	// "checking" state and none of them is in the "failed" state.
-	case iceConnectionState == ICEConnectionStateChecking && dtlsTransportState == DTLSTransportStateConnecting:
+	// None of the previous states apply and any RTCIceTransport is in the "new" or "checking" state or
+	// any RTCDtlsTransport is in the "new" or "connecting" state.
+	case (iceConnectionState == ICEConnectionStateNew || iceConnectionState == ICEConnectionStateChecking) ||
+		(dtlsTransportState == DTLSTransportStateNew || dtlsTransportState == DTLSTransportStateConnecting):
 		connectionState = PeerConnectionStateConnecting
+
+	// All RTCIceTransports and RTCDtlsTransports are in the "connected", "completed" or "closed"
+	// state and all RTCDtlsTransports are in the "connected" or "closed" state.
+	case (iceConnectionState == ICEConnectionStateConnected || iceConnectionState == ICEConnectionStateCompleted || iceConnectionState == ICEConnectionStateClosed) &&
+		(dtlsTransportState == DTLSTransportStateConnected || dtlsTransportState == DTLSTransportStateClosed):
+		connectionState = PeerConnectionStateConnected
 	}
 
 	if pc.connectionState.Load() == connectionState {
@@ -1270,14 +1282,16 @@ func setRTPTransceiverCurrentDirection(answer *SessionDescription, currentTransc
 			case RTPTransceiverDirectionSendonly:
 				direction = RTPTransceiverDirectionRecvonly
 			case RTPTransceiverDirectionRecvonly:
-				// Pion will answer recvonly with a offer recvonly transceiver, so we should
-				// not change the direction to sendonly if we are the offerer, otherwise this
-				// tranceiver can't be reuse for AddTrack
-				if t.Direction() != RTPTransceiverDirectionRecvonly {
-					direction = RTPTransceiverDirectionSendonly
-				}
+				direction = RTPTransceiverDirectionSendonly
 			default:
 			}
+		}
+
+		// If a transceiver is created by applying a remote description that has recvonly transceiver,
+		// it will have no sender. In this case, the transceiver's current direction is set to inactive so
+		// that the transceiver can be reused by next AddTrack.
+		if direction == RTPTransceiverDirectionSendonly && t.Sender() == nil {
+			direction = RTPTransceiverDirectionInactive
 		}
 
 		t.setCurrentDirection(direction)
