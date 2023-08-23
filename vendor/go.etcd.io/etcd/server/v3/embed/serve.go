@@ -19,15 +19,17 @@ import (
 	"fmt"
 	"io/ioutil"
 	defaultLog "log"
+	"math"
 	"net"
 	"net/http"
 	"strings"
 
 	etcdservergw "go.etcd.io/etcd/api/v3/etcdserverpb/gw"
+	"go.etcd.io/etcd/client/pkg/v3/transport"
 	"go.etcd.io/etcd/client/v3/credentials"
 	"go.etcd.io/etcd/pkg/v3/debugutil"
 	"go.etcd.io/etcd/pkg/v3/httputil"
-	"go.etcd.io/etcd/pkg/v3/transport"
+	"go.etcd.io/etcd/server/v3/config"
 	"go.etcd.io/etcd/server/v3/etcdserver"
 	"go.etcd.io/etcd/server/v3/etcdserver/api/v3client"
 	"go.etcd.io/etcd/server/v3/etcdserver/api/v3election"
@@ -42,6 +44,7 @@ import (
 	"github.com/soheilhy/cmux"
 	"github.com/tmc/grpc-websocket-proxy/wsproxy"
 	"go.uber.org/zap"
+	"golang.org/x/net/http2"
 	"golang.org/x/net/trace"
 	"google.golang.org/grpc"
 )
@@ -109,7 +112,7 @@ func (sctx *serveCtx) serve(
 	}()
 
 	if sctx.insecure {
-		gs = v3rpc.Server(s, nil, gopts...)
+		gs = v3rpc.Server(s, nil, nil, gopts...)
 		v3electionpb.RegisterElectionServer(gs, servElection)
 		v3lockpb.RegisterLockServer(gs, servLock)
 		if sctx.serviceRegister != nil {
@@ -132,6 +135,10 @@ func (sctx *serveCtx) serve(
 			Handler:  createAccessController(sctx.lg, s, httpmux),
 			ErrorLog: logger, // do not log user error
 		}
+		if err := configureHttpServer(srvhttp, s.Cfg); err != nil {
+			sctx.lg.Error("Configure http server failed", zap.Error(err))
+			return err
+		}
 		httpl := m.Match(cmux.HTTP1())
 		go func() { errHandler(srvhttp.Serve(httpl)) }()
 
@@ -147,7 +154,7 @@ func (sctx *serveCtx) serve(
 		if tlsErr != nil {
 			return tlsErr
 		}
-		gs = v3rpc.Server(s, tlscfg, gopts...)
+		gs = v3rpc.Server(s, tlscfg, nil, gopts...)
 		v3electionpb.RegisterElectionServer(gs, servElection)
 		v3lockpb.RegisterLockServer(gs, servLock)
 		if sctx.serviceRegister != nil {
@@ -181,6 +188,10 @@ func (sctx *serveCtx) serve(
 			TLSConfig: tlscfg,
 			ErrorLog:  logger, // do not log user error
 		}
+		if err := configureHttpServer(srv, s.Cfg); err != nil {
+			sctx.lg.Error("Configure https server failed", zap.Error(err))
+			return err
+		}
 		go func() { errHandler(srv.Serve(tlsl)) }()
 
 		sctx.serversC <- &servers{secure: true, grpc: gs, http: srv}
@@ -192,6 +203,13 @@ func (sctx *serveCtx) serve(
 
 	close(sctx.serversC)
 	return m.Serve()
+}
+
+func configureHttpServer(srv *http.Server, cfg config.ServerConfig) error {
+	// todo (ahrtr): should we support configuring other parameters in the future as well?
+	return http2.ConfigureServer(srv, &http2.Server{
+		MaxConcurrentStreams: cfg.MaxConcurrentStreams,
+	})
 }
 
 // grpcHandlerFunc returns an http.Handler that delegates to grpcServer on incoming gRPC
@@ -221,6 +239,10 @@ func (sctx *serveCtx) registerGateway(opts []grpc.DialOption) (*gw.ServeMux, err
 		// explicitly define unix network for gRPC socket support
 		addr = fmt.Sprintf("%s://%s", network, addr)
 	}
+
+	opts = append(opts, grpc.WithDefaultCallOptions([]grpc.CallOption{
+		grpc.MaxCallRecvMsgSize(math.MaxInt32),
+	}...))
 
 	conn, err := grpc.DialContext(ctx, addr, opts...)
 	if err != nil {
@@ -303,8 +325,12 @@ type accessController struct {
 }
 
 func (ac *accessController) ServeHTTP(rw http.ResponseWriter, req *http.Request) {
+	if req == nil {
+		http.Error(rw, "Request is nil", http.StatusBadRequest)
+		return
+	}
 	// redirect for backward compatibilities
-	if req != nil && req.URL != nil && strings.HasPrefix(req.URL.Path, "/v3beta/") {
+	if req.URL != nil && strings.HasPrefix(req.URL.Path, "/v3beta/") {
 		req.URL.Path = strings.Replace(req.URL.Path, "/v3beta/", "/v3/", 1)
 	}
 

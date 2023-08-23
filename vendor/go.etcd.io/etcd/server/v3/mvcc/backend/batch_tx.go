@@ -25,16 +25,36 @@ import (
 	"go.uber.org/zap"
 )
 
+type BucketID int
+
+type Bucket interface {
+	// ID returns a unique identifier of a bucket.
+	// The id must NOT be persisted and can be used as lightweight identificator
+	// in the in-memory maps.
+	ID() BucketID
+	Name() []byte
+	// String implements Stringer (human readable name).
+	String() string
+
+	// IsSafeRangeBucket is a hack to avoid inadvertently reading duplicate keys;
+	// overwrites on a bucket should only fetch with limit=1, but safeRangeBucket
+	// is known to never overwrite any key so range is safe.
+	IsSafeRangeBucket() bool
+}
+
 type BatchTx interface {
 	ReadTx
-	UnsafeCreateBucket(name []byte)
-	UnsafePut(bucketName []byte, key []byte, value []byte)
-	UnsafeSeqPut(bucketName []byte, key []byte, value []byte)
-	UnsafeDelete(bucketName []byte, key []byte)
+	UnsafeCreateBucket(bucket Bucket)
+	UnsafeDeleteBucket(bucket Bucket)
+	UnsafePut(bucket Bucket, key []byte, value []byte)
+	UnsafeSeqPut(bucket Bucket, key []byte, value []byte)
+	UnsafeDelete(bucket Bucket, key []byte)
 	// Commit commits a previous tx and begins a new writable one.
 	Commit()
 	// CommitAndStop commits the previous tx and does not create a new one.
 	CommitAndStop()
+	LockInsideApply()
+	LockOutsideApply()
 }
 
 type batchTx struct {
@@ -45,8 +65,32 @@ type batchTx struct {
 	pending int
 }
 
+// Lock is supposed to be called only by the unit test.
 func (t *batchTx) Lock() {
+	ValidateCalledInsideUnittest(t.backend.lg)
+	t.lock()
+}
+
+func (t *batchTx) lock() {
 	t.Mutex.Lock()
+}
+
+func (t *batchTx) LockInsideApply() {
+	t.lock()
+	if t.backend.txPostLockInsideApplyHook != nil {
+		// The callers of some methods (i.e., (*RaftCluster).AddMember)
+		// can be coming from both InsideApply and OutsideApply, but the
+		// callers from OutsideApply will have a nil txPostLockInsideApplyHook.
+		// So we should check the txPostLockInsideApplyHook before validating
+		// the callstack.
+		ValidateCalledInsideApply(t.backend.lg)
+		t.backend.txPostLockInsideApplyHook()
+	}
+}
+
+func (t *batchTx) LockOutsideApply() {
+	ValidateCalledOutSideApply(t.backend.lg)
+	t.lock()
 }
 
 func (t *batchTx) Unlock() {
@@ -68,12 +112,24 @@ func (t *batchTx) RUnlock() {
 	panic("unexpected RUnlock")
 }
 
-func (t *batchTx) UnsafeCreateBucket(name []byte) {
-	_, err := t.tx.CreateBucket(name)
+func (t *batchTx) UnsafeCreateBucket(bucket Bucket) {
+	_, err := t.tx.CreateBucket(bucket.Name())
 	if err != nil && err != bolt.ErrBucketExists {
 		t.backend.lg.Fatal(
 			"failed to create a bucket",
-			zap.String("bucket-name", string(name)),
+			zap.Stringer("bucket-name", bucket),
+			zap.Error(err),
+		)
+	}
+	t.pending++
+}
+
+func (t *batchTx) UnsafeDeleteBucket(bucket Bucket) {
+	err := t.tx.DeleteBucket(bucket.Name())
+	if err != nil && err != bolt.ErrBucketNotFound {
+		t.backend.lg.Fatal(
+			"failed to delete a bucket",
+			zap.Stringer("bucket-name", bucket),
 			zap.Error(err),
 		)
 	}
@@ -81,21 +137,22 @@ func (t *batchTx) UnsafeCreateBucket(name []byte) {
 }
 
 // UnsafePut must be called holding the lock on the tx.
-func (t *batchTx) UnsafePut(bucketName []byte, key []byte, value []byte) {
-	t.unsafePut(bucketName, key, value, false)
+func (t *batchTx) UnsafePut(bucket Bucket, key []byte, value []byte) {
+	t.unsafePut(bucket, key, value, false)
 }
 
 // UnsafeSeqPut must be called holding the lock on the tx.
-func (t *batchTx) UnsafeSeqPut(bucketName []byte, key []byte, value []byte) {
-	t.unsafePut(bucketName, key, value, true)
+func (t *batchTx) UnsafeSeqPut(bucket Bucket, key []byte, value []byte) {
+	t.unsafePut(bucket, key, value, true)
 }
 
-func (t *batchTx) unsafePut(bucketName []byte, key []byte, value []byte, seq bool) {
-	bucket := t.tx.Bucket(bucketName)
+func (t *batchTx) unsafePut(bucketType Bucket, key []byte, value []byte, seq bool) {
+	bucket := t.tx.Bucket(bucketType.Name())
 	if bucket == nil {
 		t.backend.lg.Fatal(
 			"failed to find a bucket",
-			zap.String("bucket-name", string(bucketName)),
+			zap.Stringer("bucket-name", bucketType),
+			zap.Stack("stack"),
 		)
 	}
 	if seq {
@@ -106,7 +163,7 @@ func (t *batchTx) unsafePut(bucketName []byte, key []byte, value []byte, seq boo
 	if err := bucket.Put(key, value); err != nil {
 		t.backend.lg.Fatal(
 			"failed to write to a bucket",
-			zap.String("bucket-name", string(bucketName)),
+			zap.Stringer("bucket-name", bucketType),
 			zap.Error(err),
 		)
 	}
@@ -114,12 +171,13 @@ func (t *batchTx) unsafePut(bucketName []byte, key []byte, value []byte, seq boo
 }
 
 // UnsafeRange must be called holding the lock on the tx.
-func (t *batchTx) UnsafeRange(bucketName, key, endKey []byte, limit int64) ([][]byte, [][]byte) {
-	bucket := t.tx.Bucket(bucketName)
+func (t *batchTx) UnsafeRange(bucketType Bucket, key, endKey []byte, limit int64) ([][]byte, [][]byte) {
+	bucket := t.tx.Bucket(bucketType.Name())
 	if bucket == nil {
 		t.backend.lg.Fatal(
 			"failed to find a bucket",
-			zap.String("bucket-name", string(bucketName)),
+			zap.Stringer("bucket-name", bucketType),
+			zap.Stack("stack"),
 		)
 	}
 	return unsafeRange(bucket.Cursor(), key, endKey, limit)
@@ -148,19 +206,20 @@ func unsafeRange(c *bolt.Cursor, key, endKey []byte, limit int64) (keys [][]byte
 }
 
 // UnsafeDelete must be called holding the lock on the tx.
-func (t *batchTx) UnsafeDelete(bucketName []byte, key []byte) {
-	bucket := t.tx.Bucket(bucketName)
+func (t *batchTx) UnsafeDelete(bucketType Bucket, key []byte) {
+	bucket := t.tx.Bucket(bucketType.Name())
 	if bucket == nil {
 		t.backend.lg.Fatal(
 			"failed to find a bucket",
-			zap.String("bucket-name", string(bucketName)),
+			zap.Stringer("bucket-name", bucketType),
+			zap.Stack("stack"),
 		)
 	}
 	err := bucket.Delete(key)
 	if err != nil {
 		t.backend.lg.Fatal(
 			"failed to delete a key",
-			zap.String("bucket-name", string(bucketName)),
+			zap.Stringer("bucket-name", bucketType),
 			zap.Error(err),
 		)
 	}
@@ -168,12 +227,12 @@ func (t *batchTx) UnsafeDelete(bucketName []byte, key []byte) {
 }
 
 // UnsafeForEach must be called holding the lock on the tx.
-func (t *batchTx) UnsafeForEach(bucketName []byte, visitor func(k, v []byte) error) error {
-	return unsafeForEach(t.tx, bucketName, visitor)
+func (t *batchTx) UnsafeForEach(bucket Bucket, visitor func(k, v []byte) error) error {
+	return unsafeForEach(t.tx, bucket, visitor)
 }
 
-func unsafeForEach(tx *bolt.Tx, bucket []byte, visitor func(k, v []byte) error) error {
-	if b := tx.Bucket(bucket); b != nil {
+func unsafeForEach(tx *bolt.Tx, bucket Bucket, visitor func(k, v []byte) error) error {
+	if b := tx.Bucket(bucket.Name()); b != nil {
 		return b.ForEach(visitor)
 	}
 	return nil
@@ -181,14 +240,14 @@ func unsafeForEach(tx *bolt.Tx, bucket []byte, visitor func(k, v []byte) error) 
 
 // Commit commits a previous tx and begins a new writable one.
 func (t *batchTx) Commit() {
-	t.Lock()
+	t.lock()
 	t.commit(false)
 	t.Unlock()
 }
 
 // CommitAndStop commits the previous tx and does not create a new one.
 func (t *batchTx) CommitAndStop() {
-	t.Lock()
+	t.lock()
 	t.commit(true)
 	t.Unlock()
 }
@@ -237,8 +296,8 @@ func newBatchTxBuffered(backend *backend) *batchTxBuffered {
 	tx := &batchTxBuffered{
 		batchTx: batchTx{backend: backend},
 		buf: txWriteBuffer{
-			txBuffer: txBuffer{make(map[string]*bucketBuffer)},
-			seq:      true,
+			txBuffer:   txBuffer{make(map[BucketID]*bucketBuffer)},
+			bucket2seq: make(map[BucketID]bool),
 		},
 	}
 	tx.Commit()
@@ -258,18 +317,22 @@ func (t *batchTxBuffered) Unlock() {
 }
 
 func (t *batchTxBuffered) Commit() {
-	t.Lock()
+	t.lock()
 	t.commit(false)
 	t.Unlock()
 }
 
 func (t *batchTxBuffered) CommitAndStop() {
-	t.Lock()
+	t.lock()
 	t.commit(true)
 	t.Unlock()
 }
 
 func (t *batchTxBuffered) commit(stop bool) {
+	if t.backend.hooks != nil {
+		t.backend.hooks.OnPreCommitUnsafe(t)
+	}
+
 	// all read txs must be closed to acquire boltdb commit rwlock
 	t.backend.readTx.Lock()
 	t.unsafeCommit(stop)
@@ -296,12 +359,12 @@ func (t *batchTxBuffered) unsafeCommit(stop bool) {
 	}
 }
 
-func (t *batchTxBuffered) UnsafePut(bucketName []byte, key []byte, value []byte) {
-	t.batchTx.UnsafePut(bucketName, key, value)
-	t.buf.put(bucketName, key, value)
+func (t *batchTxBuffered) UnsafePut(bucket Bucket, key []byte, value []byte) {
+	t.batchTx.UnsafePut(bucket, key, value)
+	t.buf.put(bucket, key, value)
 }
 
-func (t *batchTxBuffered) UnsafeSeqPut(bucketName []byte, key []byte, value []byte) {
-	t.batchTx.UnsafeSeqPut(bucketName, key, value)
-	t.buf.putSeq(bucketName, key, value)
+func (t *batchTxBuffered) UnsafeSeqPut(bucket Bucket, key []byte, value []byte) {
+	t.batchTx.UnsafeSeqPut(bucket, key, value)
+	t.buf.putSeq(bucket, key, value)
 }

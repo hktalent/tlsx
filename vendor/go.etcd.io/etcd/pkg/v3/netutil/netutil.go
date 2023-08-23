@@ -23,7 +23,7 @@ import (
 	"sort"
 	"time"
 
-	"go.etcd.io/etcd/pkg/v3/types"
+	"go.etcd.io/etcd/client/pkg/v3/types"
 
 	"go.uber.org/zap"
 )
@@ -189,12 +189,6 @@ func URLStringsEqual(ctx context.Context, lg *zap.Logger, a []string, b []string
 			return false, fmt.Errorf("failed to parse %q", str)
 		}
 		urlsB = append(urlsB, *u)
-	}
-	if lg == nil {
-		lg, _ = zap.NewProduction()
-		if lg == nil {
-			lg = zap.NewExample()
-		}
 	}
 	return urlsEqual(ctx, lg, urlsA, urlsB)
 }

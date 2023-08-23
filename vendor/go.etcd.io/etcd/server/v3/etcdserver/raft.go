@@ -24,12 +24,13 @@ import (
 	"time"
 
 	pb "go.etcd.io/etcd/api/v3/etcdserverpb"
+	"go.etcd.io/etcd/client/pkg/v3/logutil"
+	"go.etcd.io/etcd/client/pkg/v3/types"
 	"go.etcd.io/etcd/pkg/v3/contention"
-	"go.etcd.io/etcd/pkg/v3/logutil"
 	"go.etcd.io/etcd/pkg/v3/pbutil"
-	"go.etcd.io/etcd/pkg/v3/types"
 	"go.etcd.io/etcd/raft/v3"
 	"go.etcd.io/etcd/raft/v3/raftpb"
+	"go.etcd.io/etcd/server/v3/config"
 	"go.etcd.io/etcd/server/v3/etcdserver/api/membership"
 	"go.etcd.io/etcd/server/v3/etcdserver/api/rafthttp"
 	"go.etcd.io/etcd/server/v3/wal"
@@ -216,6 +217,14 @@ func (r *raftNode) start(rh *raftReadyHandler) {
 
 				updateCommittedIndex(&ap, rh)
 
+				waitWALSync := shouldWaitWALSync(rd)
+				if waitWALSync {
+					// gofail: var raftBeforeSaveWaitWalSync struct{}
+					if err := r.storage.Save(rd.HardState, rd.Entries); err != nil {
+						r.lg.Fatal("failed to save Raft hard state and entries", zap.Error(err))
+					}
+				}
+
 				select {
 				case r.applyc <- ap:
 				case <-r.stopped:
@@ -240,9 +249,11 @@ func (r *raftNode) start(rh *raftReadyHandler) {
 					// gofail: var raftAfterSaveSnap struct{}
 				}
 
-				// gofail: var raftBeforeSave struct{}
-				if err := r.storage.Save(rd.HardState, rd.Entries); err != nil {
-					r.lg.Fatal("failed to save Raft hard state and entries", zap.Error(err))
+				if !waitWALSync {
+					// gofail: var raftBeforeSave struct{}
+					if err := r.storage.Save(rd.HardState, rd.Entries); err != nil {
+						r.lg.Fatal("failed to save Raft hard state and entries", zap.Error(err))
+					}
 				}
 				if !raft.IsEmptyHardState(rd.HardState) {
 					proposalsCommitted.Set(float64(rd.HardState.Commit))
@@ -319,6 +330,42 @@ func (r *raftNode) start(rh *raftReadyHandler) {
 			}
 		}
 	}()
+}
+
+// For a cluster with only one member, the raft may send both the
+// unstable entries and committed entries to etcdserver, and there
+// may have overlapped log entries between them.
+//
+// etcd responds to the client once it finishes (actually partially)
+// the applying workflow. But when the client receives the response,
+// it doesn't mean etcd has already successfully saved the data,
+// including BoltDB and WAL, because:
+//    1. etcd commits the boltDB transaction periodically instead of on each request;
+//    2. etcd saves WAL entries in parallel with applying the committed entries.
+// Accordingly, it might run into a situation of data loss when the etcd crashes
+// immediately after responding to the client and before the boltDB and WAL
+// successfully save the data to disk.
+// Note that this issue can only happen for clusters with only one member.
+//
+// For clusters with multiple members, it isn't an issue, because etcd will
+// not commit & apply the data before it being replicated to majority members.
+// When the client receives the response, it means the data must have been applied.
+// It further means the data must have been committed.
+// Note: for clusters with multiple members, the raft will never send identical
+// unstable entries and committed entries to etcdserver.
+//
+// Refer to https://github.com/etcd-io/etcd/issues/14370.
+func shouldWaitWALSync(rd raft.Ready) bool {
+	if len(rd.CommittedEntries) == 0 || len(rd.Entries) == 0 {
+		return false
+	}
+
+	// Check if there is overlap between unstable and committed entries
+	// assuming that their index and term are only incrementing.
+	lastCommittedEntry := rd.CommittedEntries[len(rd.CommittedEntries)-1]
+	firstUnstableEntry := rd.Entries[0]
+	return lastCommittedEntry.Term > firstUnstableEntry.Term ||
+		(lastCommittedEntry.Term == firstUnstableEntry.Term && lastCommittedEntry.Index >= firstUnstableEntry.Index)
 }
 
 func updateCommittedIndex(ap *apply, rh *raftReadyHandler) {
@@ -419,7 +466,7 @@ func (r *raftNode) advanceTicks(ticks int) {
 	}
 }
 
-func startNode(cfg ServerConfig, cl *membership.RaftCluster, ids []types.ID) (id types.ID, n raft.Node, s *raft.MemoryStorage, w *wal.WAL) {
+func startNode(cfg config.ServerConfig, cl *membership.RaftCluster, ids []types.ID) (id types.ID, n raft.Node, s *raft.MemoryStorage, w *wal.WAL) {
 	var err error
 	member := cl.MemberByName(cfg.Name)
 	metadata := pbutil.MustMarshal(
@@ -459,19 +506,8 @@ func startNode(cfg ServerConfig, cl *membership.RaftCluster, ids []types.ID) (id
 		MaxInflightMsgs: maxInflightMsgs,
 		CheckQuorum:     true,
 		PreVote:         cfg.PreVote,
+		Logger:          NewRaftLoggerZap(cfg.Logger.Named("raft")),
 	}
-	if cfg.Logger != nil {
-		// called after capnslog setting in "init" function
-		if cfg.LoggerConfig != nil {
-			c.Logger, err = NewRaftLogger(cfg.LoggerConfig)
-			if err != nil {
-				log.Fatalf("cannot create raft logger %v", err)
-			}
-		} else if cfg.LoggerCore != nil && cfg.LoggerWriteSyncer != nil {
-			c.Logger = NewRaftLoggerFromZapCore(cfg.LoggerCore, cfg.LoggerWriteSyncer)
-		}
-	}
-
 	if len(peers) == 0 {
 		n = raft.RestartNode(c)
 	} else {
@@ -483,7 +519,7 @@ func startNode(cfg ServerConfig, cl *membership.RaftCluster, ids []types.ID) (id
 	return id, n, s, w
 }
 
-func restartNode(cfg ServerConfig, snapshot *raftpb.Snapshot) (types.ID, *membership.RaftCluster, raft.Node, *raft.MemoryStorage, *wal.WAL) {
+func restartNode(cfg config.ServerConfig, snapshot *raftpb.Snapshot) (types.ID, *membership.RaftCluster, raft.Node, *raft.MemoryStorage, *wal.WAL) {
 	var walsnap walpb.Snapshot
 	if snapshot != nil {
 		walsnap.Index, walsnap.Term = snapshot.Metadata.Index, snapshot.Metadata.Term
@@ -496,7 +532,7 @@ func restartNode(cfg ServerConfig, snapshot *raftpb.Snapshot) (types.ID, *member
 		zap.String("local-member-id", id.String()),
 		zap.Uint64("commit-index", st.Commit),
 	)
-	cl := membership.NewCluster(cfg.Logger, "")
+	cl := membership.NewCluster(cfg.Logger)
 	cl.SetID(id, cid)
 	s := raft.NewMemoryStorage()
 	if snapshot != nil {
@@ -513,18 +549,7 @@ func restartNode(cfg ServerConfig, snapshot *raftpb.Snapshot) (types.ID, *member
 		MaxInflightMsgs: maxInflightMsgs,
 		CheckQuorum:     true,
 		PreVote:         cfg.PreVote,
-	}
-	if cfg.Logger != nil {
-		// called after capnslog setting in "init" function
-		var err error
-		if cfg.LoggerConfig != nil {
-			c.Logger, err = NewRaftLogger(cfg.LoggerConfig)
-			if err != nil {
-				log.Fatalf("cannot create raft logger %v", err)
-			}
-		} else if cfg.LoggerCore != nil && cfg.LoggerWriteSyncer != nil {
-			c.Logger = NewRaftLoggerFromZapCore(cfg.LoggerCore, cfg.LoggerWriteSyncer)
-		}
+		Logger:          NewRaftLoggerZap(cfg.Logger.Named("raft")),
 	}
 
 	n := raft.RestartNode(c)
@@ -534,7 +559,7 @@ func restartNode(cfg ServerConfig, snapshot *raftpb.Snapshot) (types.ID, *member
 	return id, cl, n, s, w
 }
 
-func restartAsStandaloneNode(cfg ServerConfig, snapshot *raftpb.Snapshot) (types.ID, *membership.RaftCluster, raft.Node, *raft.MemoryStorage, *wal.WAL) {
+func restartAsStandaloneNode(cfg config.ServerConfig, snapshot *raftpb.Snapshot) (types.ID, *membership.RaftCluster, raft.Node, *raft.MemoryStorage, *wal.WAL) {
 	var walsnap walpb.Snapshot
 	if snapshot != nil {
 		walsnap.Index, walsnap.Term = snapshot.Metadata.Index, snapshot.Metadata.Term
@@ -581,7 +606,7 @@ func restartAsStandaloneNode(cfg ServerConfig, snapshot *raftpb.Snapshot) (types
 		zap.Uint64("commit-index", st.Commit),
 	)
 
-	cl := membership.NewCluster(cfg.Logger, "")
+	cl := membership.NewCluster(cfg.Logger)
 	cl.SetID(id, cid)
 	s := raft.NewMemoryStorage()
 	if snapshot != nil {
@@ -598,17 +623,7 @@ func restartAsStandaloneNode(cfg ServerConfig, snapshot *raftpb.Snapshot) (types
 		MaxInflightMsgs: maxInflightMsgs,
 		CheckQuorum:     true,
 		PreVote:         cfg.PreVote,
-	}
-	if cfg.Logger != nil {
-		// called after capnslog setting in "init" function
-		if cfg.LoggerConfig != nil {
-			c.Logger, err = NewRaftLogger(cfg.LoggerConfig)
-			if err != nil {
-				log.Fatalf("cannot create raft logger %v", err)
-			}
-		} else if cfg.LoggerCore != nil && cfg.LoggerWriteSyncer != nil {
-			c.Logger = NewRaftLoggerFromZapCore(cfg.LoggerCore, cfg.LoggerWriteSyncer)
-		}
+		Logger:          NewRaftLoggerZap(cfg.Logger.Named("raft")),
 	}
 
 	n := raft.RestartNode(c)

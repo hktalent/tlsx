@@ -29,6 +29,9 @@ github.com/asaskevich/govalidator
 ## explicit
 github.com/aymerick/douceur/css
 github.com/aymerick/douceur/parser
+# github.com/benbjohnson/clock v1.1.0
+## explicit; go 1.15
+github.com/benbjohnson/clock
 # github.com/beorn7/perks v1.0.1
 ## explicit; go 1.11
 github.com/beorn7/perks/quantile
@@ -38,6 +41,9 @@ github.com/bgentry/speakeasy
 # github.com/c4milo/unpackit v1.0.0
 ## explicit; go 1.18
 github.com/c4milo/unpackit
+# github.com/cenkalti/backoff/v4 v4.1.1
+## explicit; go 1.13
+github.com/cenkalti/backoff/v4
 # github.com/census-instrumentation/opencensus-proto v0.3.0
 ## explicit
 github.com/census-instrumentation/opencensus-proto/gen-go/resource/v1
@@ -259,6 +265,7 @@ github.com/gosuri/uiprogress/util/strutil
 # github.com/grpc-ecosystem/go-grpc-middleware v1.3.0
 ## explicit; go 1.14
 github.com/grpc-ecosystem/go-grpc-middleware
+github.com/grpc-ecosystem/go-grpc-middleware/logging/settable
 # github.com/grpc-ecosystem/go-grpc-prometheus v1.2.0
 ## explicit
 github.com/grpc-ecosystem/go-grpc-prometheus
@@ -810,8 +817,6 @@ github.com/yusufpapurcu/wmi
 # github.com/zmap/rc2 v0.0.0-20131011165748-24b9757f5521
 ## explicit
 github.com/zmap/rc2
-# github.com/zmap/zcertificate v0.0.0-20180516150559-0e3d58b1bac4
-## explicit
 # github.com/zmap/zcrypto v0.0.0-20230113044912-682e75113af0
 ## explicit; go 1.16
 github.com/zmap/zcrypto/dsa
@@ -842,6 +847,9 @@ go.etcd.io/etcd/client/pkg/v3/logutil
 go.etcd.io/etcd/client/pkg/v3/pathutil
 go.etcd.io/etcd/client/pkg/v3/srv
 go.etcd.io/etcd/client/pkg/v3/systemd
+go.etcd.io/etcd/client/pkg/v3/testutil
+go.etcd.io/etcd/client/pkg/v3/tlsutil
+go.etcd.io/etcd/client/pkg/v3/transport
 go.etcd.io/etcd/client/pkg/v3/types
 # go.etcd.io/etcd/client/v2 v2.305.6
 ## explicit; go 1.16
@@ -858,51 +866,49 @@ go.etcd.io/etcd/client/v3/namespace
 go.etcd.io/etcd/client/v3/naming/endpoints
 go.etcd.io/etcd/client/v3/naming/endpoints/internal
 go.etcd.io/etcd/client/v3/snapshot
-# go.etcd.io/etcd/etcdctl/v3 v3.5.0-alpha.0
-## explicit; go 1.15
+# go.etcd.io/etcd/etcdctl/v3 v3.5.5
+## explicit; go 1.16
 go.etcd.io/etcd/etcdctl/v3
 go.etcd.io/etcd/etcdctl/v3/ctlv2
 go.etcd.io/etcd/etcdctl/v3/ctlv2/command
 go.etcd.io/etcd/etcdctl/v3/ctlv3
 go.etcd.io/etcd/etcdctl/v3/ctlv3/command
-go.etcd.io/etcd/etcdctl/v3/snapshot
-# go.etcd.io/etcd/pkg/v3 v3.5.0-alpha.0
-## explicit; go 1.15
+# go.etcd.io/etcd/etcdutl/v3 v3.5.5
+## explicit; go 1.16
+go.etcd.io/etcd/etcdutl/v3/etcdutl
+go.etcd.io/etcd/etcdutl/v3/snapshot
+# go.etcd.io/etcd/pkg/v3 v3.5.5
+## explicit; go 1.16
 go.etcd.io/etcd/pkg/v3/adt
+go.etcd.io/etcd/pkg/v3/cobrautl
 go.etcd.io/etcd/pkg/v3/contention
 go.etcd.io/etcd/pkg/v3/cpuutil
 go.etcd.io/etcd/pkg/v3/crc
 go.etcd.io/etcd/pkg/v3/debugutil
-go.etcd.io/etcd/pkg/v3/fileutil
 go.etcd.io/etcd/pkg/v3/flags
+go.etcd.io/etcd/pkg/v3/grpc_testing
 go.etcd.io/etcd/pkg/v3/httputil
 go.etcd.io/etcd/pkg/v3/idutil
 go.etcd.io/etcd/pkg/v3/ioutil
-go.etcd.io/etcd/pkg/v3/logutil
 go.etcd.io/etcd/pkg/v3/netutil
-go.etcd.io/etcd/pkg/v3/pathutil
 go.etcd.io/etcd/pkg/v3/pbutil
 go.etcd.io/etcd/pkg/v3/report
 go.etcd.io/etcd/pkg/v3/runtime
 go.etcd.io/etcd/pkg/v3/schedule
-go.etcd.io/etcd/pkg/v3/srv
-go.etcd.io/etcd/pkg/v3/systemd
-go.etcd.io/etcd/pkg/v3/testutil
-go.etcd.io/etcd/pkg/v3/tlsutil
 go.etcd.io/etcd/pkg/v3/traceutil
-go.etcd.io/etcd/pkg/v3/transport
-go.etcd.io/etcd/pkg/v3/types
 go.etcd.io/etcd/pkg/v3/wait
-# go.etcd.io/etcd/raft/v3 v3.5.0-alpha.0
-## explicit; go 1.15
+# go.etcd.io/etcd/raft/v3 v3.5.5
+## explicit; go 1.16
 go.etcd.io/etcd/raft/v3
 go.etcd.io/etcd/raft/v3/confchange
 go.etcd.io/etcd/raft/v3/quorum
 go.etcd.io/etcd/raft/v3/raftpb
 go.etcd.io/etcd/raft/v3/tracker
-# go.etcd.io/etcd/server/v3 v3.5.0-alpha.0
-## explicit; go 1.15
+# go.etcd.io/etcd/server/v3 v3.5.5
+## explicit; go 1.16
 go.etcd.io/etcd/server/v3/auth
+go.etcd.io/etcd/server/v3/config
+go.etcd.io/etcd/server/v3/datadir
 go.etcd.io/etcd/server/v3/embed
 go.etcd.io/etcd/server/v3/etcdserver
 go.etcd.io/etcd/server/v3/etcdserver/api
@@ -935,17 +941,59 @@ go.etcd.io/etcd/server/v3/lease/leasehttp
 go.etcd.io/etcd/server/v3/lease/leasepb
 go.etcd.io/etcd/server/v3/mvcc
 go.etcd.io/etcd/server/v3/mvcc/backend
+go.etcd.io/etcd/server/v3/mvcc/buckets
 go.etcd.io/etcd/server/v3/proxy/grpcproxy
 go.etcd.io/etcd/server/v3/proxy/grpcproxy/adapter
 go.etcd.io/etcd/server/v3/proxy/grpcproxy/cache
+go.etcd.io/etcd/server/v3/verify
 go.etcd.io/etcd/server/v3/wal
 go.etcd.io/etcd/server/v3/wal/walpb
-# go.etcd.io/etcd/tests/v3 v3.5.0-alpha.0
-## explicit; go 1.15
+# go.etcd.io/etcd/tests/v3 v3.5.5
+## explicit; go 1.16
 go.etcd.io/etcd/tests/v3/integration
-# go.etcd.io/etcd/v3 v3.5.0-alpha.0
-## explicit; go 1.15
+# go.etcd.io/etcd/v3 v3.5.5
+## explicit; go 1.16
 go.etcd.io/etcd/v3
+# go.opentelemetry.io/contrib/instrumentation/google.golang.org/grpc/otelgrpc v0.25.0
+## explicit; go 1.15
+go.opentelemetry.io/contrib/instrumentation/google.golang.org/grpc/otelgrpc
+go.opentelemetry.io/contrib/instrumentation/google.golang.org/grpc/otelgrpc/internal
+# go.opentelemetry.io/otel v1.0.1
+## explicit; go 1.15
+go.opentelemetry.io/otel
+go.opentelemetry.io/otel/attribute
+go.opentelemetry.io/otel/baggage
+go.opentelemetry.io/otel/codes
+go.opentelemetry.io/otel/internal
+go.opentelemetry.io/otel/internal/baggage
+go.opentelemetry.io/otel/internal/global
+go.opentelemetry.io/otel/propagation
+go.opentelemetry.io/otel/semconv/v1.4.0
+# go.opentelemetry.io/otel/exporters/otlp/otlptrace v1.0.1
+## explicit; go 1.15
+go.opentelemetry.io/otel/exporters/otlp/otlptrace
+go.opentelemetry.io/otel/exporters/otlp/otlptrace/internal/connection
+go.opentelemetry.io/otel/exporters/otlp/otlptrace/internal/otlpconfig
+go.opentelemetry.io/otel/exporters/otlp/otlptrace/internal/retry
+go.opentelemetry.io/otel/exporters/otlp/otlptrace/internal/tracetransform
+# go.opentelemetry.io/otel/exporters/otlp/otlptrace/otlptracegrpc v1.0.1
+## explicit; go 1.15
+go.opentelemetry.io/otel/exporters/otlp/otlptrace/otlptracegrpc
+# go.opentelemetry.io/otel/sdk v1.0.1
+## explicit; go 1.15
+go.opentelemetry.io/otel/sdk/instrumentation
+go.opentelemetry.io/otel/sdk/internal
+go.opentelemetry.io/otel/sdk/resource
+go.opentelemetry.io/otel/sdk/trace
+# go.opentelemetry.io/otel/trace v1.0.1
+## explicit; go 1.15
+go.opentelemetry.io/otel/trace
+# go.opentelemetry.io/proto/otlp v0.9.0
+## explicit; go 1.14
+go.opentelemetry.io/proto/otlp/collector/trace/v1
+go.opentelemetry.io/proto/otlp/common/v1
+go.opentelemetry.io/proto/otlp/resource/v1
+go.opentelemetry.io/proto/otlp/trace/v1
 # go.uber.org/atomic v1.10.0
 ## explicit; go 1.18
 go.uber.org/atomic
@@ -959,8 +1007,10 @@ go.uber.org/zap/buffer
 go.uber.org/zap/internal/bufferpool
 go.uber.org/zap/internal/color
 go.uber.org/zap/internal/exit
+go.uber.org/zap/internal/ztest
 go.uber.org/zap/zapcore
 go.uber.org/zap/zapgrpc
+go.uber.org/zap/zaptest
 # golang.org/x/crypto v0.7.0
 ## explicit; go 1.17
 golang.org/x/crypto/bcrypt
@@ -1098,6 +1148,7 @@ google.golang.org/genproto/googleapis/api
 google.golang.org/genproto/googleapis/api/annotations
 google.golang.org/genproto/googleapis/api/expr/v1alpha1
 google.golang.org/genproto/googleapis/api/httpbody
+google.golang.org/genproto/googleapis/rpc/errdetails
 google.golang.org/genproto/googleapis/rpc/status
 google.golang.org/genproto/protobuf/api
 google.golang.org/genproto/protobuf/field_mask
@@ -1182,6 +1233,7 @@ google.golang.org/grpc/serviceconfig
 google.golang.org/grpc/stats
 google.golang.org/grpc/status
 google.golang.org/grpc/tap
+google.golang.org/grpc/test/grpc_testing
 google.golang.org/grpc/xds
 google.golang.org/grpc/xds/bootstrap
 google.golang.org/grpc/xds/csds
@@ -1271,6 +1323,9 @@ gopkg.in/djherbis/times.v1
 # gopkg.in/ini.v1 v1.67.0
 ## explicit
 gopkg.in/ini.v1
+# gopkg.in/natefinch/lumberjack.v2 v2.0.0
+## explicit
+gopkg.in/natefinch/lumberjack.v2
 # gopkg.in/yaml.v2 v2.4.0
 ## explicit; go 1.15
 gopkg.in/yaml.v2
